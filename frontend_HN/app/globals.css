@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-muted: 240 3.7% 15.9%;
+    --sidebar-muted-foreground: 240 5% 64.9%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 240 4.9% 83.9%;
+
+    /* Add cyber theme colors */
+    --cyber-glow: 177 100% 50%;
+    --cyber-accent: 286 100% 50%;
+    --cyber-grid: 0 0% 10%;
+
+    /* Update existing colors for cyber theme */
+    --primary: 177 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 286 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-muted: 240 3.7% 15.9%;
+    --sidebar-muted-foreground: 240 5% 64.9%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 240 4.9% 83.9%;
+
+    /* Add cyber theme colors for dark mode */
+    --cyber-glow: 177 100% 50%;
+    --cyber-accent: 286 100% 50%;
+    --cyber-grid: 0 0% 90%;
+
+    /* Update existing colors for cyber theme */
+    --primary: 177 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 286 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Cyber background pattern */
+.cyber-bg {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(rgba(18, 16, 16, 0.9) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 16, 16, 0.9) 1px, transparent 1px);
+  background-size: 20px 20px;
+  position: relative;
+}
+
+.cyber-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(var(--cyber-glow), 0.15), transparent 30%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Cyber card styling */
+.cyber-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(var(--cyber-glow), 0.3);
+  box-shadow: 0 0 10px rgba(var(--cyber-glow), 0.2);
+}
+
+.cyber-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--cyber-glow)), transparent);
+  animation: cyber-scan 3s linear infinite;
+}
+
+@keyframes cyber-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Neon text effect */
+.neon-text {
+  color: hsl(var(--foreground));
+  text-shadow: 0 0 5px hsl(var(--cyber-glow)), 0 0 10px hsl(var(--cyber-glow));
+}
+
+/* Cyber grid for threat map */
+.cyber-grid {
+  background-color: rgba(0, 0, 0, 0.8);
+  background-image: linear-gradient(rgba(var(--cyber-glow), 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--cyber-glow), 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border: 1px solid rgba(var(--cyber-glow), 0.3);
+  box-shadow: 0 0 15px rgba(var(--cyber-glow), 0.2);
+}
