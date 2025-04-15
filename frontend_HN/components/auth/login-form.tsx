@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { setCurrentUser, isAuthenticated } from "@/lib/auth"
-import { api } from "@/lib/api"
+import { auth } from "@/services/api"
 
 interface LoginFormProps {
   interfaceType?: string
@@ -42,43 +42,37 @@ export function LoginForm({ interfaceType }: LoginFormProps) {
     setError(null)
 
     try {
-      // Call the API (which will use mock data if real API is unavailable)
-      const response = await api.auth.login({
-        email,
-        password,
-        // Pass the interface type to the API
-        interfaceType,
-      })
+      // First check if user exists and get their role
+      const response = await auth.login({ email, password })
 
-      // Extract token from response
-      const token = response.token || response.access_token || response.key
-
-      if (token) {
-        localStorage.setItem("auth_token", token)
+      // Validate response data
+      if (!response || !response.user) {
+        throw new Error('Invalid response from server')
       }
 
-      // IMPORTANT: Always use the interfaceType from the login page to determine the role
-      // This ensures users get the correct view based on which login option they selected
-      const role = interfaceType === "cockpit" ? "cockpit" : "dashboard"
+      // Check if user's role matches the requested interface
+      if (interfaceType === "cockpit" && response.user.role !== "cockpit") {
+        throw new Error('You don\'t have permission to access the cockpit interface. Only cockpit users can access this interface.')
+      }
 
-      // Set the current user with localStorage persistence
+      // Set the current user with the data from the backend
       setCurrentUser({
-        id: response.user?.id || "1",
-        name: response.user?.name || email.split("@")[0],
-        email: email,
-        role: role, // Use the role based on interfaceType
-        avatar: response.user?.avatar || "/avatars/01.png",
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
+        role: response.user.role,
+        avatar: response.user.avatar || "/avatars/01.png",
       })
 
       // Show success message
       toast({
         title: "Login successful",
-        description: `You have successfully logged in as a ${role} user.`,
+        description: `You have successfully logged in as a ${response.user.role} user.`,
       })
 
-      // Redirect based on interfaceType - with a small delay to allow toast to show
+      // Redirect based on user role
       setTimeout(() => {
-        if (interfaceType === "cockpit") {
+        if (response.user.role === "cockpit") {
           window.location.href = "/cockpit"
         } else {
           window.location.href = "/dashboard"

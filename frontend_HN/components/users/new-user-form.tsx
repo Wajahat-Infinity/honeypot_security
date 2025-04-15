@@ -1,26 +1,50 @@
 "use client"
 
-import { useForm } from "react-hook-form"
-import { api } from "@/lib/api"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "@/components/ui/use-toast"
+import { api } from "@/lib/api"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-type FormValues = {
-  email: string
-  password: string
-  password2: string
-  name: string
-  role: "dashboard" | "cockpit"
-}
+const formSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  password2: z.string().min(8, "Password must be at least 8 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  role: z.enum(["dashboard", "cockpit"]),
+}).refine((data) => data.password === data.password2, {
+  message: "Passwords don't match",
+  path: ["password2"],
+})
+
+type FormValues = z.infer<typeof formSchema>
 
 export function NewUserForm() {
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  
   const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -31,14 +55,28 @@ export function NewUserForm() {
   })
 
   const onSubmit = async (data: FormValues) => {
+    setIsLoading(true)
     try {
-      await api.auth.register(data)
-      toast.success("User created successfully")
+      await api.users.create({
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        role: data.role,
+      })
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      })
       router.refresh()
       form.reset()
-    } catch (error) {
-      toast.error("Failed to create user")
-      console.error("Registration error:", error)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -116,7 +154,7 @@ export function NewUserForm() {
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -129,8 +167,8 @@ export function NewUserForm() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Creating..." : "Create User"}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Creating..." : "Create User"}
             </Button>
           </form>
         </Form>

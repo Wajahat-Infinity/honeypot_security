@@ -1,12 +1,43 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-    };
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to add the auth token to requests
+axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add a response interceptor to handle errors
+axiosInstance.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Error:', error.response.data);
+      return Promise.reject(error.response.data);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Network Error:', error.request);
+      return Promise.reject(new Error('Network error. Please check your connection.'));
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request Error:', error.message);
+      return Promise.reject(error);
+    }
+  }
+);
 
 export interface DashboardStats {
     totalThreats: number;
@@ -62,94 +93,161 @@ export interface Alert {
     status: 'new' | 'investigating' | 'resolved';
 }
 
-export const api = {
-    login: async (username: string, password: string) => {
-        const response = await fetch(`${API_BASE_URL}/token/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-        });
-        if (!response.ok) {
-            throw new Error('Login failed');
+export interface User {
+    id: string;
+    email: string;
+    name: string;
+    role: 'dashboard' | 'cockpit';
+    avatar?: string;
+}
+
+export interface LoginResponse {
+    access: string;
+    refresh: string;
+    user: User;
+}
+
+export const auth = {
+    login: async (credentials: { email: string; password: string }) => {
+        try {
+            const response = await axiosInstance.post('/api/auth/login/', credentials);
+            const { access, refresh, user } = response.data;
+            
+            // Store tokens
+            localStorage.setItem('token', access);
+            localStorage.setItem('refreshToken', refresh);
+            
+            return response.data;
+        } catch (error: any) {
+            if (error.response) {
+                if (error.response.status === 401) {
+                    throw new Error('Invalid email or password');
+                } else if (error.response.status === 404) {
+                    throw new Error('User not found. Please register first.');
+                } else {
+                    throw new Error(error.response.data.detail || 'Login failed');
+                }
+            }
+            throw error;
         }
-        const data = await response.json();
-        localStorage.setItem('token', data.access);
-        return data;
     },
 
     logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+    },
+
+    register: async (userData: {
+        email: string;
+        password: string;
+        name: string;
+        role: 'dashboard' | 'cockpit';
+    }) => {
+        try {
+            const response = await axiosInstance.post('/api/auth/register/', userData);
+            return response.data;
+        } catch (error) {
+            console.error('Registration error:', error);
+            throw error;
+        }
+    },
+
+    refreshToken: async () => {
+        try {
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (!refreshToken) {
+                throw new Error('No refresh token found');
+            }
+
+            const response = await axiosInstance.post('/api/auth/refresh/', { refresh: refreshToken });
+            const { access } = response.data;
+            localStorage.setItem('token', access);
+            return response.data;
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            throw error;
+        }
+    },
+
+    getProfile: async () => {
+        try {
+            const response = await axiosInstance.get('/api/auth/user/');
+            return response.data;
+        } catch (error) {
+            console.error('Profile fetch error:', error);
+            throw error;
+        }
     },
 
     getDashboardStats: async (): Promise<DashboardStats> => {
-        const response = await fetch(`${API_BASE_URL}/dashboard/stats/`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch dashboard stats');
-        }
-        return response.json();
+        const response = await axiosInstance.get('/dashboard/stats/');
+        return response.data;
     },
 
     getThreats: async (count: number = 10): Promise<Threat[]> => {
-        const response = await fetch(`${API_BASE_URL}/threats/?count=${count}`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch threats');
-        }
-        return response.json();
+        const response = await axiosInstance.get(`/threats/?count=${count}`);
+        return response.data;
     },
 
     getVulnerabilities: async (count: number = 10): Promise<Vulnerability[]> => {
-        const response = await fetch(`${API_BASE_URL}/vulnerabilities/?count=${count}`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch vulnerabilities');
-        }
-        return response.json();
+        const response = await axiosInstance.get(`/vulnerabilities/?count=${count}`);
+        return response.data;
     },
 
     getHoneypots: async (count: number = 5): Promise<Honeypot[]> => {
-        const response = await fetch(`${API_BASE_URL}/honeypots/?count=${count}`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch honeypots');
-        }
-        return response.json();
+        const response = await axiosInstance.get(`/honeypots/?count=${count}`);
+        return response.data;
     },
 
     getAlerts: async (count: number = 10): Promise<Alert[]> => {
-        const response = await fetch(`${API_BASE_URL}/alerts/?count=${count}`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch alerts');
-        }
-        return response.json();
+        const response = await axiosInstance.get(`/alerts/?count=${count}`);
+        return response.data;
     },
 
     getThreatMapData: async (): Promise<Threat[]> => {
-        const response = await fetch(`${API_BASE_URL}/threat-map/`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch threat map data');
-        }
-        return response.json();
+        const response = await axiosInstance.get('/threat-map/');
+        return response.data;
     },
 
     getVulnerabilityMapData: async (): Promise<Vulnerability[]> => {
-        const response = await fetch(`${API_BASE_URL}/vulnerability-map/`, {
-            headers: getAuthHeaders(),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to fetch vulnerability map data');
-        }
-        return response.json();
+        const response = await axiosInstance.get('/vulnerability-map/');
+        return response.data;
+    }
+};
+
+export const api = {
+    getDashboardStats: async (): Promise<DashboardStats> => {
+        const response = await axiosInstance.get('/dashboard/stats/');
+        return response.data;
+    },
+
+    getThreats: async (count: number = 10): Promise<Threat[]> => {
+        const response = await axiosInstance.get(`/threats/?count=${count}`);
+        return response.data;
+    },
+
+    getVulnerabilities: async (count: number = 10): Promise<Vulnerability[]> => {
+        const response = await axiosInstance.get(`/vulnerabilities/?count=${count}`);
+        return response.data;
+    },
+
+    getHoneypots: async (count: number = 5): Promise<Honeypot[]> => {
+        const response = await axiosInstance.get(`/honeypots/?count=${count}`);
+        return response.data;
+    },
+
+    getAlerts: async (count: number = 10): Promise<Alert[]> => {
+        const response = await axiosInstance.get(`/alerts/?count=${count}`);
+        return response.data;
+    },
+
+    getThreatMapData: async (): Promise<Threat[]> => {
+        const response = await axiosInstance.get('/threat-map/');
+        return response.data;
+    },
+
+    getVulnerabilityMapData: async (): Promise<Vulnerability[]> => {
+        const response = await axiosInstance.get('/vulnerability-map/');
+        return response.data;
     }
 }; 
