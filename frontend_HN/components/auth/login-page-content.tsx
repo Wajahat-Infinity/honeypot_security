@@ -16,7 +16,7 @@ export function LoginPageContent() {
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
         <div className="absolute inset-0 bg-zinc-900">
           <Image
-            src="/auth-bg.jpg"
+            src="/auth-bg2.jpg"
             width={1280}
             height={843}
             alt="Authentication background"
@@ -39,7 +39,7 @@ export function LoginPageContent() {
               "This platform has revolutionized how we detect and respond to cyber threats. The real-time monitoring and
               automated alerts have made our network security more robust than ever."
             </p>
-            <footer className="text-sm">Sofia Davis, Chief Security Officer</footer>
+            <footer className="text-sm">YAHYA HUSSAIN, Chief Security Officer</footer>
           </blockquote>
         </div>
       </div>
